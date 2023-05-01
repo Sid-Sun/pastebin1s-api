@@ -38,7 +38,7 @@ func createRawHandler(w http.ResponseWriter, r *http.Request) {
 	f.Add("api_paste_code", string(data))
 	f.Add("api_option", "paste")
 	f.Add("api_paste_expire_date", "1M")
-	r.Form.Add("api_dev_key", API_DEV_KEY)
+	f.Add("api_dev_key", API_DEV_KEY)
 	d1 := f.Encode()
 	pastebinReq, err := http.NewRequest(http.MethodPost, "https://pastebin.com/api/api_post.php", strings.NewReader(d1))
 	if err != nil {
@@ -60,6 +60,11 @@ func createRawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(pastebinRes.StatusCode)
+	if pastebinRes.StatusCode == http.StatusOK {
+		pasteID := strings.Split(string(data), "/")[3]
+		w.Write([]byte(fmt.Sprintf("https://pastebin1s.com/%s\n", pasteID)))
+		return
+	}
 	w.Write(data)
 }
 
