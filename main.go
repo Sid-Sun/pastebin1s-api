@@ -17,7 +17,7 @@ func WithCors() func(h http.Handler) http.Handler {
 	handler := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "PUT", "OPTIONS"},
-		AllowedHeaders: []string{"Origin", "X-Requested-With", "Content-Type", "Accept"},
+		AllowedHeaders: []string{"Origin", "X-Requested-With", "Content-Type", "Accept", "api_dev_key"},
 		MaxAge:         30 * 60, // 30 mins of preflight caching
 	}).Handler
 
@@ -38,7 +38,11 @@ func createRawHandler(w http.ResponseWriter, r *http.Request) {
 	f.Add("api_paste_code", string(data))
 	f.Add("api_option", "paste")
 	f.Add("api_paste_expire_date", "1M")
-	f.Add("api_dev_key", API_DEV_KEY)
+	if r.Header.Get("api_dev_key") != "" {
+		f.Add("api_dev_key", r.Header.Get("api_dev_key"))
+	} else {
+		f.Add("api_dev_key", API_DEV_KEY)
+	}
 	d1 := f.Encode()
 	pastebinReq, err := http.NewRequest(http.MethodPost, "https://pastebin.com/api/api_post.php", strings.NewReader(d1))
 	if err != nil {
@@ -76,7 +80,9 @@ func createHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// r.Form.Add("api_user_key", "2084f8a46a3246b4fe4023eaa050723b")
-	r.Form.Add("api_dev_key", API_DEV_KEY)
+	if r.Form.Get("api_dev_key") == "" {
+		r.Form.Add("api_dev_key", API_DEV_KEY)
+	}
 	d1 := r.Form.Encode()
 	pastebinReq, err := http.NewRequest(http.MethodPost, "https://pastebin.com/api/api_post.php", strings.NewReader(d1))
 	if err != nil {
