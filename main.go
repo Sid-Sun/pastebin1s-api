@@ -149,6 +149,12 @@ func main() {
 		sr.Put("/raw/{file}", createRawHandler)
 		sr.Put("/raw", createRawHandler)
 		sr.Get("/get/{paste_key}", getHandler)
+		sr.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("pong\n"))
+		})
+		sr.Get("/ping/", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("pong\n"))
+		})
 	})
 
 	srv := &http.Server{
