@@ -10,7 +10,6 @@ RUN make compile
 
 FROM alpine
 WORKDIR /root/app
-RUN apk add libc6-compat --no-cache
 COPY --from=build /build/out .
 
 CMD [ "/root/app/p1s-api" ]
