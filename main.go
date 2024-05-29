@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -26,6 +27,9 @@ func WithCors() func(h http.Handler) http.Handler {
 
 var API_DEV_KEY string
 
+const PASTEBIN1S_HEADER_V1 string = "//<-> ) pastebin1s.com ( <-> \\\\\r\n"
+const PASTEBIN1S_HEADER_V2 string = "//<-> ) pastebin1s.com V2 ( <-> \\\\\r\n"
+
 func createRawHandler(w http.ResponseWriter, r *http.Request) {
 	f := url.Values{}
 	data, err := io.ReadAll(r.Body)
@@ -35,7 +39,7 @@ func createRawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f.Add("api_paste_private", "1")
-	f.Add("api_paste_code", string(data))
+	f.Add("api_paste_code", encodeContent(PASTEBIN1S_HEADER_V2+string(data)))
 	f.Add("api_option", "paste")
 	f.Add("api_paste_expire_date", "1M")
 	if r.Header.Get("api_dev_key") != "" {
@@ -79,10 +83,10 @@ func createHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// r.Form.Add("api_user_key", "2084f8a46a3246b4fe4023eaa050723b")
 	if r.Form.Get("api_dev_key") == "" {
 		r.Form.Add("api_dev_key", API_DEV_KEY)
 	}
+	r.Form.Set("api_paste_code", encodeContent(r.Form.Get("api_paste_code")))
 	d1 := r.Form.Encode()
 	pastebinReq, err := http.NewRequest(http.MethodPost, "https://pastebin.com/api/api_post.php", strings.NewReader(d1))
 	if err != nil {
@@ -128,7 +132,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(pastebinRes.StatusCode)
-	w.Write(data)
+	w.Write([]byte(decodeContent(string(data))))
 }
 
 func main() {
@@ -164,4 +168,28 @@ func main() {
 
 	log.Printf("About to listen on %s. Go to https://0.0.0.0%s%s", listenAddr, listenAddr, basePath)
 	log.Fatal(srv.ListenAndServe())
+}
+
+func encodeContent(content string) string {
+	after, found := strings.CutPrefix(content, PASTEBIN1S_HEADER_V2)
+	if found {
+		b64 := base64.URLEncoding.EncodeToString([]byte(after))
+		return PASTEBIN1S_HEADER_V2 + b64
+	} // if not found, return the original content - if it fails, it fails
+	// if V1, return the original content
+	return content
+}
+
+func decodeContent(content string) string {
+	after, found := strings.CutPrefix(content, PASTEBIN1S_HEADER_V2)
+	if found {
+		decoded, _ := base64.URLEncoding.DecodeString(after)
+		return PASTEBIN1S_HEADER_V2 + string(decoded)
+	}
+	// if V1, return the content with V2 header, so frontend doesn't have to handle V1 and V2 differently (it's a mess)
+	after, found = strings.CutPrefix(content, PASTEBIN1S_HEADER_V1)
+	if found {
+		return PASTEBIN1S_HEADER_V2 + after
+	}
+	return content
 }

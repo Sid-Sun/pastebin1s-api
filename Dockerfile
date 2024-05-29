@@ -1,4 +1,4 @@
-FROM golang:buster as build
+FROM golang:1.22-bullseye as build
 
 WORKDIR /build
 COPY go.mod .
